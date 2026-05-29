@@ -16,16 +16,23 @@ export default function PlaygroundConverter() {
   const [activeTab, setActiveTab] = useState<'e2c' | 'c2e'>('e2c');
   
   // Earth to Cosmic Form
+  const [earthYears, setEarthYears] = useState('0');
   const [earthDays, setEarthDays] = useState('0');
   const [earthHours, setEarthHours] = useState('0');
   const [earthMinutes, setEarthMinutes] = useState('11');
   const [earthSeconds, setEarthSeconds] = useState('44');
   
   // Cosmic to Earth Form
+  const [cosmicVectorsInput, setCosmicVectorsInput] = useState('0');
+  const [cosmicCentumsInput, setCosmicCentumsInput] = useState('0');
+  const [cosmicShiftsInput, setCosmicShiftsInput] = useState('0');
   const [cosmicSessionsInput, setCosmicSessionsInput] = useState('1');
   const [cosmicEpochsInput, setCosmicEpochsInput] = useState('0');
   const [cosmicGigasInput, setCosmicGigasInput] = useState('0');
   const [cosmicMegasInput, setCosmicMegasInput] = useState('0');
+  const [cosmicMyriasInput, setCosmicMyriasInput] = useState('0');
+  const [cosmicCantosInput, setCosmicCantosInput] = useState('0');
+  const [cosmicChronsInput, setCosmicChronsInput] = useState('0');
 
   // Outputs
   const [conversionResult, setConversionResult] = useState('');
@@ -33,7 +40,8 @@ export default function PlaygroundConverter() {
     seconds: 0,
     minutes: 0,
     hours: 0,
-    days: 0
+    days: 0,
+    years: 0
   });
 
   // Photon simulation states
@@ -44,44 +52,94 @@ export default function PlaygroundConverter() {
 
   // Recalculate Earth to Cosmic
   useEffect(() => {
+    const years = parseFloat(earthYears) || 0;
     const days = parseFloat(earthDays) || 0;
     const hours = parseFloat(earthHours) || 0;
     const mins = parseFloat(earthMinutes) || 0;
     const secs = parseFloat(earthSeconds) || 0;
 
-    const totalSeconds = (days * 86400) + (hours * 3600) + (mins * 60) + secs;
+    const totalSeconds = (years * 365.25 * 86400) + (days * 86400) + (hours * 3600) + (mins * 60) + secs;
     const totalCu = totalSeconds / CHRON_UNIT_S;
 
     const decomp = decomposeChronUnits(totalCu);
     
     const pad = (v: number) => Math.floor(v).toString().padStart(2, '0');
-    const formatted = `${pad(decomp.epoch)}.${pad(decomp.giga)}.${pad(decomp.mega)}.${pad(decomp.myria)}.${pad(decomp.canto)}.${pad(decomp.chronUnit)}`;
+    // Display the absolute unified coordinates
+    const formatted = `${decomp.vector} . ${decomp.centum} . ${pad(decomp.shift)} . ${pad(decomp.totalSessions % 100)} : ${pad(decomp.epoch)}.${pad(decomp.giga)}.${pad(decomp.mega)}.${pad(decomp.myria)}.${pad(decomp.canto)}.${pad(decomp.chronUnit)}`;
     
     setConversionResult(formatted);
-  }, [earthDays, earthHours, earthMinutes, earthSeconds]);
+  }, [earthYears, earthDays, earthHours, earthMinutes, earthSeconds]);
 
   // Recalculate Cosmic to Earth
   useEffect(() => {
+    const vectors = parseFloat(cosmicVectorsInput) || 0;
+    const centums = parseFloat(cosmicCentumsInput) || 0;
+    const shifts = parseFloat(cosmicShiftsInput) || 0;
     const sessions = parseFloat(cosmicSessionsInput) || 0;
     const epochs = parseFloat(cosmicEpochsInput) || 0;
     const gigas = parseFloat(cosmicGigasInput) || 0;
     const megas = parseFloat(cosmicMegasInput) || 0;
+    const myrias = parseFloat(cosmicMyriasInput) || 0;
+    const cantos = parseFloat(cosmicCantosInput) || 0;
+    const chrons = parseFloat(cosmicChronsInput) || 0;
 
-    // Convert everything to single base: Chron-Unit
-    // 1 Session = 10^12 cu
-    // 1 Epoch = 10^10 cu
+    // Convert everything to single base: Chron-Unit (cu)
+    // 1 Vector = 1e17 cu
+    // 1 Centum = 1e16 cu
+    // 1 Shift = 1e14 cu
+    // 1 Session = 1e12 cu
+    // 1 Epoch = 1e10 cu
     // 1 Giga  = 10^8 cu
     // 1 Mega  = 10^6 cu
-    const totalCuInput = (sessions * 1e12) + (epochs * 1e10) + (gigas * 1e8) + (megas * 1e6);
+    // 1 Myria = 10^4 cu
+    // 1 Canto = 10^2 cu
+    // 1 Chron = 1 cu
+    const totalCuInput = 
+      (vectors * 1e17) + 
+      (centums * 1e16) + 
+      (shifts * 1e14) + 
+      (sessions * 1e12) + 
+      (epochs * 1e10) + 
+      (gigas * 1e8) + 
+      (megas * 1e6) + 
+      (myrias * 1e4) + 
+      (cantos * 1e2) + 
+      chrons;
+
     const calculatedSecs = totalCuInput * CHRON_UNIT_S;
 
+    const secondsInYear = 365.25 * 86400;
+    const calculatedYears = Math.floor(calculatedSecs / secondsInYear);
+    const remSecsAfterYears = calculatedSecs % secondsInYear;
+    
+    const calculatedDays = Math.floor(remSecsAfterYears / 86400);
+    const remSecsAfterDays = remSecsAfterYears % 86400;
+
+    const calculatedHours = Math.floor(remSecsAfterDays / 3600);
+    const remSecsAfterHours = remSecsAfterDays % 3600;
+
+    const calculatedMinutes = Math.floor(remSecsAfterHours / 60);
+    const calculatedSeconds = remSecsAfterHours % 60;
+
     setToEarthResult({
-      seconds: calculatedSecs % 60,
-      minutes: Math.floor(calculatedSecs / 60) % 60,
-      hours: Math.floor(calculatedSecs / 3600) % 24,
-      days: Math.floor(calculatedSecs / 86400)
+      years: calculatedYears,
+      days: calculatedDays,
+      hours: calculatedHours,
+      minutes: calculatedMinutes,
+      seconds: calculatedSeconds
     });
-  }, [cosmicSessionsInput, cosmicEpochsInput, cosmicGigasInput, cosmicMegasInput]);
+  }, [
+    cosmicVectorsInput,
+    cosmicCentumsInput,
+    cosmicShiftsInput,
+    cosmicSessionsInput,
+    cosmicEpochsInput,
+    cosmicGigasInput,
+    cosmicMegasInput,
+    cosmicMyriasInput,
+    cosmicCantosInput,
+    cosmicChronsInput
+  ]);
 
   // Photon travel simulation tick
   useEffect(() => {
@@ -172,7 +230,18 @@ export default function PlaygroundConverter() {
               1. Input Standard Duration
             </h4>
             
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-2 sm:gap-3">
+              <div>
+                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Years</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={earthYears}
+                  onChange={e => setEarthYears(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2.5 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-550/80 text-zinc-100"
+                  id="inp-years"
+                />
+              </div>
               <div>
                 <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Days</label>
                 <input
@@ -197,7 +266,7 @@ export default function PlaygroundConverter() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Minutes</label>
+                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Mins</label>
                 <input
                   type="number"
                   min="0"
@@ -209,7 +278,7 @@ export default function PlaygroundConverter() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Seconds</label>
+                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">Secs</label>
                 <input
                   type="number"
                   min="0"
@@ -227,24 +296,66 @@ export default function PlaygroundConverter() {
               <span className="text-[10px] font-mono tracking-widest uppercase font-semibold text-zinc-500 block mb-1">
                 Output Base-100 Time Array
               </span>
-              <span className="text-xl sm:text-2xl font-mono font-bold tracking-widest text-[#22d3ee] block glow-cyan">
+              <span className="text-sm sm:text-base md:text-[17px] font-mono font-bold tracking-tight text-[#22d3ee] block glow-cyan leading-relaxed">
                 {conversionResult}
               </span>
-              <span className="text-[10px] text-zinc-650 font-mono block mt-2 text-zinc-500">
-                Format: [Epoch] . [Giga] . [Mega] . [Myria] . [Canto] . [cu]
+              <span className="text-[9.5px] text-zinc-550 font-mono block mt-2">
+                Format: [Vector] . [Centum] . [Shift] . [Session] : [Epoch] . [Giga] . [Mega] . [Myria] . [Canto] . [cu]
               </span>
             </div>
           </div>
         ) : (
           <div className="space-y-4" id="form-c2e">
             <h4 className="text-xs font-bold text-cyan-400 font-mono uppercase tracking-wider">
-              1. Input Cosmic Time Vectors
+              1. Input Cosmic Time Coordinates
             </h4>
 
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Vector (V) (~814.8 Days)">
+                  Vector (V)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicVectorsInput}
+                  onChange={e => setCosmicVectorsInput(Math.max(0, parseFloat(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-vectors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Centum (C) (~81.48 Days)">
+                  Centum (C)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicCentumsInput}
+                  onChange={e => setCosmicCentumsInput(Math.max(0, parseFloat(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-centums"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Shift (S) (~19.55 Hours)">
+                  Shift (S)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicShiftsInput}
+                  onChange={e => setCosmicShiftsInput(Math.max(0, parseFloat(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-shifts"
+                />
+              </div>
+
               <div>
                 <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Cosmic Sessions (~11.73 mins)">
-                  Sessions
+                  Session (Se)
                 </label>
                 <input
                   type="number"
@@ -258,7 +369,7 @@ export default function PlaygroundConverter() {
 
               <div>
                 <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Epochs (~7.04 seconds)">
-                  Epochs
+                  Epoch (E)
                 </label>
                 <input
                   type="number"
@@ -272,7 +383,7 @@ export default function PlaygroundConverter() {
 
               <div>
                 <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Giga-Chrons (0.0704 seconds)">
-                  Gigas
+                  Giga (Gi)
                 </label>
                 <input
                   type="number"
@@ -286,7 +397,7 @@ export default function PlaygroundConverter() {
 
               <div>
                 <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Mega-Chrons (704 microseconds)">
-                  Megas
+                  Mega (Me)
                 </label>
                 <input
                   type="number"
@@ -295,6 +406,48 @@ export default function PlaygroundConverter() {
                   onChange={e => setCosmicMegasInput(Math.max(0, parseInt(e.target.value) || 0).toString())}
                   className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
                   id="inp-c-megas"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Myria-Chrons (7.04 microseconds)">
+                  Myria (My)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicMyriasInput}
+                  onChange={e => setCosmicMyriasInput(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-myrias"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Canto-Chrons (70.4 nanoseconds)">
+                  Canto (Ca)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicCantosInput}
+                  onChange={e => setCosmicCantosInput(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-cantos"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-zinc-500 mb-1 font-mono" title="Chron-Units (~0.704 nanoseconds)">
+                  Chron (cu)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={cosmicChronsInput}
+                  onChange={e => setCosmicChronsInput(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                  className="w-full text-xs px-2 py-2 font-mono bg-zinc-950 border border-zinc-850 rounded-lg text-zinc-100 focus:outline-none focus:ring-1 focus:ring-cyan-550/80"
+                  id="inp-c-chrons"
                 />
               </div>
             </div>
@@ -306,6 +459,15 @@ export default function PlaygroundConverter() {
               </span>
               
               <div className="flex items-center gap-1.5 flex-wrap">
+                {toEarthResult.years > 0 && (
+                  <>
+                    <div className="bg-zinc-950 border border-zinc-850/80 rounded-lg px-2.5 py-1 text-center font-mono">
+                      <span className="text-xs font-bold text-zinc-100">{toEarthResult.years}</span>
+                      <span className="text-[9px] text-zinc-500 block uppercase tracking-wide">Yrs</span>
+                    </div>
+                    <span className="text-zinc-750 font-bold">&bull;</span>
+                  </>
+                )}
                 <div className="bg-zinc-950 border border-zinc-850/80 rounded-lg px-2.5 py-1 text-center font-mono">
                   <span className="text-xs font-bold text-zinc-350">{toEarthResult.days}</span>
                   <span className="text-[9px] text-zinc-500 block uppercase tracking-wide">Days</span>

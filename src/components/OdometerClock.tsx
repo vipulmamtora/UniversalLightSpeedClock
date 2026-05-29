@@ -20,6 +20,8 @@ import {
 } from '../utils.ts';
 import { motion, AnimatePresence } from 'motion/react';
 
+const SYSTEM_LAUNCH_TIMESTAMP = 1780012800000; // May 29, 2026 00:00 UTC
+
 interface OdometerClockProps {
   accumulatedCu: number;
   setAccumulatedCu: React.Dispatch<React.SetStateAction<number>>;
@@ -49,9 +51,9 @@ export default function OdometerClock({
     {
       id: 'system-activation',
       name: 'System Launch Anchor',
-      description: 'Tracks continuous light-speed propagation starting from system load state.',
-      timestamp: Date.now(),
-      isFixed: false,
+      description: 'Tracks continuous light-speed propagation starting from May 29, 2026 00:00 UTC.',
+      timestamp: SYSTEM_LAUNCH_TIMESTAMP,
+      isFixed: true,
     },
     ...RECENT_CALIBRATIONS
   ]);
@@ -148,7 +150,7 @@ export default function OdometerClock({
     return Math.floor(num).toString().padStart(2, '0');
   };
 
-  const odometerString = `${decomposed.vector}.${decomposed.centum}.${formatPad(decomposed.shift)} : ${formatPad(decomposed.epoch)}.${formatPad(decomposed.giga)}.${formatPad(decomposed.mega)}.${formatPad(decomposed.myria)}.${formatPad(decomposed.canto)}.${formatPad(decomposed.chronUnit)}`;
+  const odometerString = `${decomposed.vector}.${decomposed.centum}.${formatPad(decomposed.shift)}.${formatPad(decomposed.totalSessions % 100)} : ${formatPad(decomposed.epoch)}.${formatPad(decomposed.giga)}.${formatPad(decomposed.mega)}.${formatPad(decomposed.myria)}.${formatPad(decomposed.canto)}.${formatPad(decomposed.chronUnit)}`;
 
   const copyOdometerString = () => {
     navigator.clipboard.writeText(odometerString);
@@ -160,7 +162,8 @@ export default function OdometerClock({
     setActiveAnchor(anchor);
     // Align current continuous CU to match anchor delta accurately
     if (anchor.id === 'system-activation') {
-      setAccumulatedCu(0);
+      const elapsedMsSinceLaunch = Date.now() - SYSTEM_LAUNCH_TIMESTAMP;
+      setAccumulatedCu(msToChronUnits(elapsedMsSinceLaunch > 0 ? elapsedMsSinceLaunch : 0));
     } else {
       const elapsedMsSince1987 = Date.now() - SN1987A_TIMESTAMP;
       setAccumulatedCu(OFFSET_CU + msToChronUnits(elapsedMsSince1987));
@@ -192,11 +195,10 @@ export default function OdometerClock({
   };
 
   const handleResetActivation = () => {
-    // Reset launch anchor to right now
-    const nowLocal = Date.now();
+    // Reset launch anchor to its fixed global timestamp
     const updatedCalibrations = calibrations.map(c => {
       if (c.id === 'system-activation') {
-        return { ...c, timestamp: nowLocal };
+        return { ...c, timestamp: SYSTEM_LAUNCH_TIMESTAMP };
       }
       return c;
     });
@@ -204,7 +206,8 @@ export default function OdometerClock({
     
     const activeSysLaunch = updatedCalibrations.find(c => c.id === 'system-activation')!;
     setActiveAnchor(activeSysLaunch);
-    setAccumulatedCu(0);
+    const elapsedMsSinceLaunch = Date.now() - SYSTEM_LAUNCH_TIMESTAMP;
+    setAccumulatedCu(msToChronUnits(elapsedMsSinceLaunch > 0 ? elapsedMsSinceLaunch : 0));
     lastTimeRef.current = Date.now();
   };
 
@@ -219,9 +222,9 @@ export default function OdometerClock({
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="chron-engine-dock">
+    <div className="flex flex-col gap-8 w-full" id="chron-engine-dock">
       {/* Central Interactive Odometer Section */}
-      <div className="lg:col-span-8 flex flex-col justify-between hardware-border bg-zinc-900/40 backdrop-blur-md rounded-2xl p-6 sm:p-8 shadow-2xl relative">
+      <div className="w-full flex flex-col justify-between hardware-border bg-zinc-900/40 backdrop-blur-md rounded-2xl p-6 sm:p-8 shadow-2xl relative">
         <div>
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-900 pb-5 mb-6 gap-4">
@@ -271,143 +274,202 @@ export default function OdometerClock({
             {/* Odometer Glass-reflection effect */}
             <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
 
-            {/* Base-100 Cosmic Calendar Layer */}
-            <div className="mb-6 pb-5 border-b border-zinc-900/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold block">
-                  Macro Base-100 Cosmic Calendar
-                </span>
-                <span className="text-xs text-zinc-400 font-light mt-0.5 block">
-                  Epoch-Chrons scaled into a chronological calendar matrix
-                </span>
-              </div>
-              <div className="flex items-center gap-2 font-mono">
-                {/* Vector block */}
-                <div className="bg-zinc-950 border border-zinc-850 px-3 py-1.5 rounded-xl text-center min-w-[55px]">
-                  <span className="text-zinc-100 text-sm font-bold block">{decomposed.vector}</span>
-                  <span className="text-[8px] text-zinc-500 uppercase tracking-widest block mt-0.5 font-bold">Vector</span>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10 w-full">
+              {/* Digital numerical block - Col span 12 */}
+              <div className="lg:col-span-12 flex flex-col justify-between w-full h-full">
+                {/* Base-100 Cosmic Calendar Header */}
+                <div className="mb-4 pb-3 border-b border-zinc-900/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
+                  <div className="w-full sm:w-auto">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold block">
+                      Macro Base-100 Cosmic Calendar
+                    </span>
+                    <span className="text-xs text-zinc-400 font-light mt-0.5 block">
+                      All Chronological units listed in tabular sequence above the 10&times;10 shift grid
+                    </span>
+                  </div>
                 </div>
-                <span className="text-zinc-750 font-bold text-sm select-none">&bull;</span>
-                {/* Centum block */}
-                <div className="bg-zinc-950 border border-zinc-850 px-3 py-1.5 rounded-xl text-center min-w-[55px]">
-                  <span className="text-zinc-100 text-sm font-bold block">{decomposed.centum}</span>
-                  <span className="text-[8px] text-zinc-500 uppercase tracking-widest block mt-0.5 font-bold">Centum</span>
+
+                {/* Side-by-Side Grid Layout: Cosmic Unit Table and Shift Calendar Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch w-full mt-2">
+                  {/* Cosmic Coordinate Matrix Table Column */}
+                  <div className="overflow-hidden rounded-xl border border-zinc-850/60 bg-zinc-950/45 shadow-lg h-full flex flex-col justify-between">
+                    <table className="w-full text-left font-mono border-collapse h-full">
+                      <thead>
+                        <tr className="border-b border-zinc-900/80 bg-zinc-950/90 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                          <th className="py-2 px-4">Cosmic Dimension Unit</th>
+                          <th className="py-2 px-4 text-right">Coordinate Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-900/40 text-xs text-zinc-300">
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.5)]"></span>
+                            <span className="font-semibold text-zinc-100">Vector (V)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Planetary Year Cycle</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-100 text-sm">
+                            {decomposed.vector}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                            <span className="font-semibold text-zinc-100">Centum (C)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Solar Month Decant</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-150 text-sm">
+                            {decomposed.centum}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors bg-cyan-500/[0.02]">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                            <span className="font-semibold text-zinc-150">Shift (S)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Diurnal Shift Coordinate</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-cyan-400 text-sm glow-cyan-sm">
+                            {formatPad(decomposed.shift)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span className="font-semibold text-zinc-100">Session (Se)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Relational Event Interval</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-emerald-400 text-sm shadow-sm">
+                            {formatPad(decomposed.totalSessions % 100)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <span className="font-semibold text-zinc-100">Epoch (E)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Major Chronological Block</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-100 text-sm">
+                            {formatPad(decomposed.epoch)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                            <span className="font-semibold text-zinc-100">Giga (Gi)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; 100-Epoch Megablock</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-200 text-sm">
+                            {formatPad(decomposed.giga)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors bg-[#fbbf24]/[0.01]">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span className="font-semibold text-zinc-100">Mega (Me)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; 10,000-Epoch Hyperblock</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-200 text-sm">
+                            {formatPad(decomposed.mega)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                            <span className="font-semibold text-zinc-100">Myria (My)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Decamillennial Progression</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-zinc-300 text-sm">
+                            {formatPad(decomposed.myria)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                            <span className="font-semibold text-zinc-100">Canto (Ca)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Micro-period Beat</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-cyan-400 text-sm glow-cyan-sm">
+                            {formatPad(decomposed.canto)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-zinc-900/25 transition-colors bg-amber-500/[0.02]">
+                          <td className="py-2 px-4 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span className="font-semibold text-zinc-100">Chron (cu)</span>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider hidden sm:inline">&bull; Base Light-travel Time Coordinate</span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-amber-400 text-sm glow-cyan-sm">
+                            {formatPad(decomposed.chronUnit)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 10x10 Traditional Calendar Month Matrix Column */}
+                  <div className="p-3 sm:p-4 bg-zinc-950/70 rounded-xl border border-zinc-850/60 w-full relative h-full flex flex-col justify-between">
+                    <div className="flex justify-between items-center mb-2.5 px-1">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={12} className="text-cyan-400" />
+                        <span className="text-[9.5px] font-mono uppercase tracking-[0.15em] text-zinc-100 font-semibold block">
+                          Centum {decomposed.centum} Month grid
+                        </span>
+                      </div>
+                      <span className="text-[9.5px] font-mono text-zinc-550 block">
+                        Vector V{decomposed.vector} &bull; Cyclic Shift 00-99
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-11 gap-1 text-center font-mono">
+                      {/* Corner header */}
+                      <div className="text-[8px] font-bold text-zinc-650 flex items-center justify-center uppercase pb-1 border-b border-zinc-900/80">
+                        Row
+                      </div>
+                      {/* Column Headers 0-9 */}
+                      {Array.from({ length: 10 }).map((_, colIdx) => (
+                        <div key={`col-hdr-${colIdx}`} className="text-[8px] sm:text-[9.5px] font-black text-cyan-400/80 pb-1 border-b border-zinc-900/80 flex items-center justify-center">
+                          +{colIdx}
+                        </div>
+                      ))}
+
+                      {/* 10 Rows of Shifts */}
+                      {Array.from({ length: 10 }).map((_, rowIdx) => {
+                        const baseShift = rowIdx * 10;
+                        return (
+                          <React.Fragment key={`row-${rowIdx}`}>
+                            {/* Left Row Header indicates tens position (00, 10, 20... 90) */}
+                            <div className="text-[8px] sm:text-[9.5px] font-bold text-zinc-500/85 flex items-center justify-center border-r border-zinc-900 pr-1 py-[1.5px]">
+                              {rowIdx}0
+                            </div>
+                            {/* 10 cells representing individual shifts in centum month */}
+                            {Array.from({ length: 10 }).map((_, colIdx) => {
+                              const shiftVal = baseShift + colIdx;
+                              const isCurrent = shiftVal === decomposed.shift;
+                              const isPast = shiftVal < decomposed.shift;
+                              return (
+                                <div
+                                  key={`shift-${shiftVal}`}
+                                  className={`aspect-square flex flex-col items-center justify-center rounded-md border text-[8px] sm:text-[10px] font-semibold transition-all relative ${
+                                    isCurrent
+                                      ? 'bg-gradient-to-tr from-cyan-500/90 to-[#22d3ee] text-zinc-950 font-extrabold border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.4)] scale-105 z-10'
+                                      : isPast
+                                        ? 'bg-zinc-900/25 border-zinc-900 text-zinc-550 hover:bg-zinc-900 hover:text-zinc-350 cursor-pointer'
+                                        : 'bg-zinc-950/15 border-zinc-900/40 text-zinc-700/80 hover:bg-zinc-900/40 hover:text-zinc-450 cursor-pointer'
+                                  }`}
+                                  title={`Shift ${formatPad(shiftVal)} of Centum ${decomposed.centum}`}
+                                >
+                                  <span>{formatPad(shiftVal)}</span>
+                                  {isCurrent && (
+                                    <span className="absolute bottom-0.5 w-1 h-1 bg-zinc-950 rounded-full animate-ping"></span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-zinc-750 font-bold text-sm select-none">&bull;</span>
-                {/* Shift block */}
-                <div className="bg-zinc-950 border border-zinc-850 px-3 py-1.5 rounded-xl text-center min-w-[55px]">
-                  <span className="text-cyan-400 text-sm font-bold block glow-cyan-sm">{formatPad(decomposed.shift)}</span>
-                  <span className="text-[8px] text-zinc-500 uppercase tracking-widest block mt-0.5 font-bold">Shift</span>
-                </div>
-              </div>
-            </div>
-
-            {/* The Six 100-base blocks */}
-            <div className="grid grid-cols-6 gap-1.5 sm:gap-3 items-center relative z-10">
-              
-              {/* Block 1: Epoch */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-zinc-100 font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan">
-                    {formatPad(decomposed.epoch)}
-                  </span>
-                  <div className="absolute left-0 top-0 w-1 h-full bg-zinc-900/50"></div>
-                  <div className="absolute right-0 top-0 w-1 h-full bg-zinc-900/50"></div>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Epoch
-                </span>
-              </div>
-
-              {/* Dot */}
-              <div className="text-zinc-700 font-mono text-xl sm:text-3xl text-center pb-5 select-none font-bold glow-cyan">
-                &bull;
-              </div>
-
-              {/* Block 2: Giga */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-zinc-200 font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan">
-                    {formatPad(decomposed.giga)}
-                  </span>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Giga
-                </span>
-              </div>
-
-              {/* Dot */}
-              <div className="text-zinc-700 font-mono text-xl sm:text-3xl text-center pb-5 select-none font-bold glow-cyan">
-                &bull;
-              </div>
-
-              {/* Block 3: Mega */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-[#22d3ee] font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan">
-                    {formatPad(decomposed.mega)}
-                  </span>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Mega
-                </span>
-              </div>
-
-              {/* Dot */}
-              <div className="text-zinc-700 font-mono text-xl sm:text-3xl text-center pb-5 select-none font-bold glow-cyan">
-                &bull;
-              </div>
-
-              {/* Block 4: Myria */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-cyan-400 font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan">
-                    {formatPad(decomposed.myria)}
-                  </span>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Myria
-                </span>
-              </div>
-
-              {/* Dot */}
-              <div className="text-zinc-700 font-mono text-xl sm:text-3xl text-center pb-5 select-none font-bold glow-cyan">
-                &bull;
-              </div>
-
-              {/* Block 5: Canto */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-emerald-400 font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan-sm">
-                    {formatPad(decomposed.canto)}
-                  </span>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Canto
-                </span>
-              </div>
-
-              {/* Dot */}
-              <div className="text-zinc-700 font-mono text-xl sm:text-3xl text-center pb-5 select-none font-bold glow-cyan">
-                &bull;
-              </div>
-
-              {/* Block 6: Chron-Unit */}
-              <div className="flex flex-col items-center">
-                <div className="w-full bg-black/40 border border-zinc-800/85 rounded-xl px-1.5 py-4 text-center shadow-inner relative overflow-hidden">
-                  <span className="text-amber-400 font-mono text-xl sm:text-4xl md:text-5xl font-light tracking-wide block glow-cyan-sm">
-                    {formatPad(decomposed.chronUnit)}
-                  </span>
-                  <div className="absolute inset-x-0 h-px bg-white/5 top-1/2"></div>
-                </div>
-                <span className="text-[10px] sm:text-xs font-mono tracking-widest uppercase text-zinc-500 mt-2.5 font-medium">
-                  Chron (cu)
-                </span>
               </div>
 
             </div>
@@ -487,25 +549,29 @@ export default function OdometerClock({
         </div>
       </div>
 
-      {/* Control Station & Anchor Configuration (Right Sidebar panel) */}
-      <div className="lg:col-span-4 flex flex-col gap-6" id="chron-anchors-config">
+      {/* Control Station & Anchor Configuration (Bottom panels) */}
+      <div className="flex flex-col gap-8 w-full" id="chron-anchors-config">
         {/* Speed flow regulator */}
-        <div className="hardware-border bg-zinc-950/70 p-6 rounded-2xl relative shadow-2xl">
-          <h3 className="text-sm font-light tracking-widest uppercase text-zinc-400 font-mono mb-4 flex items-center gap-1.5">
-            <Zap size={14} className="text-cyan-400" /> Time-Flow Regulator
-          </h3>
-          <p className="text-xs text-zinc-450 mb-4 leading-relaxed font-light">
-            Adjust the velocity of cosmic propagation. Multipliers offset sub-unit accumulation intervals relative to human observer scales.
-          </p>
+        <div className="hardware-border bg-zinc-950/70 p-6 rounded-2xl relative shadow-2xl w-full">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-sm font-semibold tracking-widest uppercase text-zinc-200 font-mono flex items-center gap-1.5">
+                <Zap size={14} className="text-cyan-400" /> Time-Flow Regulator
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-4xl font-light">
+                Adjust the velocity of cosmic propagation. Multipliers offset sub-unit accumulation intervals relative to human observer scales.
+              </p>
+            </div>
+          </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 w-full animate-fade-in">
             {presetSpeeds.map(preset => (
               <button
                 key={preset.value}
                 onClick={() => setSpeedMultiplier(preset.value)}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-xs font-medium transition-all flex justify-between items-center ${
+                className={`text-left px-3.5 py-2.5 rounded-xl border text-xs font-medium transition-all flex justify-between items-center ${
                   speedMultiplier === preset.value
-                    ? 'border-cyan-500 bg-cyan-950/30 text-cyan-400 font-bold shadow-[0_0_12px_rgba(34,211,238,0.1)]'
+                    ? 'border-cyan-500 bg-cyan-950/30 text-cyan-400 font-bold shadow-[0_0_12px_rgba(34,211,238,0.15)]'
                     : 'border-zinc-850 bg-zinc-900/20 hover:bg-zinc-900/50 text-zinc-400 hover:border-zinc-800 hover:text-zinc-200'
                 }`}
                 id={`btn-speed-${preset.value}`}
@@ -520,56 +586,59 @@ export default function OdometerClock({
         </div>
 
         {/* Anchors and Calibrations panel */}
-        <div className="hardware-border bg-zinc-950/70 p-6 rounded-2xl relative shadow-2xl flex-1">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-light tracking-widest uppercase text-zinc-400 font-mono flex items-center gap-1.5">
-              <RefreshCw size={14} className="text-cyan-400 animate-spin-slow" /> Sync Anchors
-            </h3>
+        <div className="hardware-border bg-zinc-950/70 p-6 rounded-2xl relative shadow-2xl w-full">
+          <div className="flex justify-between items-center mb-2 border-b border-zinc-900 pb-3">
+            <div>
+              <h3 className="text-sm font-semibold tracking-widest uppercase text-zinc-200 font-mono flex items-center gap-1.5">
+                <RefreshCw size={14} className="text-cyan-400 animate-spin-slow" /> Sync Anchors
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-4xl font-light">
+                Coordinate standard cosmic clocks onto Earth historical epochs or precise planetary astronomical moments.
+              </p>
+            </div>
             
             <button
               onClick={() => setShowCustomConfig(!showCustomConfig)}
-              className="text-xs text-cyan-400 font-semibold hover:text-cyan-300 transition-colors"
+              className="text-xs bg-cyan-950/60 border border-cyan-800/45 text-cyan-400 px-3 py-1.5 rounded-xl font-bold hover:bg-cyan-900/60 hover:text-cyan-300 transition-colors shadow-sm whitespace-nowrap"
               id="btn-toggle-custom-align"
             >
               {showCustomConfig ? 'Cancel' : '+ Custom'}
             </button>
           </div>
 
-          <p className="text-xs text-zinc-455 mb-4 font-light">
-            Coordinate standard cosmic clocks onto Earth historical epochs or precise planetary astronomical moments.
-          </p>
-
           {showCustomConfig ? (
-            <form onSubmit={handleAddCustomAnchor} className="bg-zinc-900/60 border border-zinc-805/80 p-4 rounded-xl space-y-3 mb-4">
+            <form onSubmit={handleAddCustomAnchor} className="bg-zinc-900/60 border border-zinc-805/80 p-4 rounded-xl space-y-3 mb-4 max-w-xl">
               <h4 className="text-xs font-bold text-cyan-400 font-mono uppercase">
                 Calibrate Coordinate Zero
               </h4>
-              <div>
-                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">
-                  Anchor Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. JWST First Deep Field"
-                  value={customName}
-                  onChange={e => setCustomName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500/80 text-zinc-105"
-                  id="inp-custom-anchor-name"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">
-                  Solar Event Timestamp
-                </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={customDate}
-                  onChange={e => setCustomDate(e.target.value)}
-                  className="w-full text-xs px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500/80 text-zinc-105 font-mono"
-                  id="inp-custom-anchor-time"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">
+                    Anchor Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. JWST First Deep Field"
+                    value={customName}
+                    onChange={e => setCustomName(e.target.value)}
+                    className="w-full text-xs px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500/80 text-zinc-105"
+                    id="inp-custom-anchor-name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-zinc-500 mb-1">
+                    Solar Event Timestamp
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={customDate}
+                    onChange={e => setCustomDate(e.target.value)}
+                    className="w-full text-xs px-3 py-2 bg-zinc-950 border border-zinc-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500/80 text-zinc-105 font-mono"
+                    id="inp-custom-anchor-time"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
@@ -581,7 +650,7 @@ export default function OdometerClock({
             </form>
           ) : null}
 
-          <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full mt-4">
             {calibrations.map(anchor => {
               const isActive = activeAnchor.id === anchor.id;
               return (
