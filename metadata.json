@@ -2,5 +2,5 @@
   "name": "Universal Light-Speed Clock",
   "description": "An absolute timekeeping system based on the vacuum wavelength of Hydrogen and pure base-100 decimal scaling.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
